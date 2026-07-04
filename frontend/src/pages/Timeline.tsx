@@ -1,22 +1,16 @@
 import { useEffect, useState } from 'react'
 import { CATEGORY_COLORS } from '../types'
-
-interface TimelineItem {
-  year: number
-  title: string
-  category: string
-  description: string
-}
+import type { TimelineItem } from '../types'
+import { documentsApi } from '../services/api'
 
 export default function Timeline() {
   const [items, setItems] = useState<TimelineItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/timeline')
-      .then((res) => res.json())
-      .then((data) => {
-        setItems(data.items ?? [])
+    documentsApi.timeline()
+      .then((res) => {
+        setItems(res.data.items ?? [])
         setLoading(false)
       })
       .catch(() => setLoading(false))

@@ -28,3 +28,9 @@
 ## Build Output
 - tsc + vite build succeeds
 - Output: dist/ (index.html, CSS 18KB, JS 291KB)
+
+## Code Review Fixes (4 issues)
+1. api.ts / Upload.tsx / Search.tsx / Timeline.tsx - All pages now use documentsApi instead of raw fetch()
+2. Search.tsx - Replaced any[] with SearchResult[] type from types/index.ts
+3. Timeline.tsx - Removed duplicate TimelineItem interface, imported from types/index.ts
+4. Upload.tsx - Added file validation (max 10MB, allowed extensions check) on both input and drag-drop. Parallel uploads via Promise.allSettled with per-file success/error status tracking

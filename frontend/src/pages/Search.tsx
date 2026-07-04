@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Search as SearchIcon, FileText } from 'lucide-react'
 import { CATEGORY_COLORS } from '../types'
+import type { SearchResult } from '../types'
+import { documentsApi } from '../services/api'
 
 export default function Search() {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<SearchResult[]>([])
   const [searched, setSearched] = useState(false)
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -13,9 +15,8 @@ export default function Search() {
     setSearched(true)
 
     try {
-      const res = await fetch(`/api/v1/search?q=${encodeURIComponent(query)}`)
-      const data = await res.json()
-      setResults(data.results ?? [])
+      const res = await documentsApi.search(query)
+      setResults(res.data.results ?? [])
     } catch {
       setResults([])
     }
@@ -46,7 +47,7 @@ export default function Search() {
       )}
 
       <div className="space-y-3">
-        {results.map((r: any, i: number) => (
+        {results.map((r, i) => (
           <div key={i} className="bg-white rounded-xl border p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
