@@ -35,11 +35,14 @@ class VectorStore:
             query_embeddings=[query_embedding],
             n_results=top_k,
         )
+        if not results or not results.get("ids") or not results["ids"]:
+            return []
+
         output = []
         for i in range(len(results["ids"][0])):
             output.append({
                 "id": results["ids"][0][i],
-                "score": results["distances"][0][i] if results["distances"] else 0,
+                "score": results["distances"][0][i] if results.get("distances") else 0,
                 "text": results["documents"][0][i],
                 "metadata": results["metadatas"][0][i],
             })

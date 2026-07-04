@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from uuid import uuid4
 
 from app.core.config import settings
 
@@ -19,11 +19,13 @@ class FileParser:
         self.upload_dir = Path(settings.UPLOAD_DIR)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_file(self, file_content: bytes, file_name: str) -> str:
-        file_path = self.upload_dir / file_name
+    def save_file(self, file_content: bytes, original_name: str) -> str:
+        ext = Path(original_name).suffix.lower()
+        safe_name = f"{uuid4().hex}{ext}"
+        file_path = self.upload_dir / safe_name
         with open(file_path, "wb") as f:
             f.write(file_content)
-        return str(file_path)
+        return str(file_path), safe_name
 
     def extract_text(self, file_path: str, file_type: str) -> str:
         ext = Path(file_path).suffix.lower()
@@ -53,7 +55,7 @@ class FileParser:
             text = pytesseract.image_to_string(image)
             return text
         except Exception:
-            return "[OCR not available - install pytesseract]"
+            return ""
 
     def _extract_txt_text(self, file_path: str) -> str:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -65,7 +67,7 @@ class FileParser:
             doc = Document(file_path)
             return "\n".join([p.text for p in doc.paragraphs])
         except ImportError:
-            return "[DOCX parsing not available]"
+            return ""
 
     def get_file_type(self, file_name: str) -> str:
         ext = Path(file_name).suffix.lower()

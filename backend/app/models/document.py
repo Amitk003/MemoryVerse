@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SAEnum, ForeignKey
 import enum
 
 from app.core.database import Base
@@ -37,8 +37,8 @@ class Relationship(Base):
     __tablename__ = "relationships"
 
     id = Column(Integer, primary_key=True, index=True)
-    source_document_id = Column(Integer, nullable=False)
-    target_document_id = Column(Integer, nullable=False)
+    source_document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    target_document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     relationship_type = Column(String(100), nullable=False)
     description = Column(Text, default="")
     created_at = Column(DateTime, default=datetime.utcnow)

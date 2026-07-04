@@ -1,13 +1,29 @@
+import re
+import json
+
 from app.core.gemini import gemini_client
 
 
 class RelationshipEngine:
+    def _extract_json(self, text: str) -> str:
+        match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        return text.strip()
+
     def find_relationships(self, all_documents: list[dict]) -> list[dict]:
         doc_summaries = []
         for doc in all_documents:
-            doc_summaries.append(f"ID: {doc['id']}, Title: {doc['title']}, Category: {doc['category']}")
+            summary = (
+                f"ID: {doc['id']}, "
+                f"Title: {doc['title']}, "
+                f"Category: {doc['category']}, "
+                f"Description: {doc.get('description', '')[:200]}, "
+                f"Content: {doc.get('extracted_text', '')[:300]}"
+            )
+            doc_summaries.append(summary)
 
-        docs_text = "\n".join(doc_summaries)
+        docs_text = "\n---\n".join(doc_summaries)
 
         prompt = f"""
 You are a relationship discovery engine. Given the list of documents below,
@@ -34,8 +50,7 @@ Documents:
 
         try:
             response = gemini_client.generate_text(prompt)
-            import json
-            cleaned = response.strip().strip("```json").strip("```").strip()
+            cleaned = self._extract_json(response)
             return json.loads(cleaned)
         except Exception:
             return []

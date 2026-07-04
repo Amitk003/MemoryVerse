@@ -39,3 +39,12 @@
 - docs/setup.md - Setup guide
 - docs/usage.md - Usage guide
 - README.md - Project README
+
+## Code Review Fixes (7 issues)
+1. classifier.py - Replaced brittle strip() with regex json extraction
+2. engine.py - Replaced brittle strip() with regex json extraction
+3. parser.py - Fixed path traversal: UUID filenames instead of user-supplied names. OCR failure returns empty string instead of placeholders
+4. document.py - Added ForeignKey("documents.id", ondelete="CASCADE") on source_document_id and target_document_id
+5. chroma.py - Added empty results guard before accessing results["ids"][0]
+6. engine.py - Added description and extracted_text to relationship prompts for better context
+7. parser.py - save_file returns (path, safe_name) tuple instead of just path

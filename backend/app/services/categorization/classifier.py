@@ -1,4 +1,5 @@
-from typing import Optional
+import re
+import json
 
 from app.core.gemini import gemini_client
 
@@ -18,6 +19,12 @@ class Classifier:
     def __init__(self):
         self.categories = CATEGORIES
 
+    def _extract_json(self, text: str) -> str:
+        match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        return text.strip()
+
     def classify(self, title: str, text: str) -> dict:
         prompt = f"""
 You are a document classifier. Given the document title and content below,
@@ -33,8 +40,7 @@ Document Content: {text[:2000]}
 
         try:
             response = gemini_client.generate_text(prompt)
-            import json
-            cleaned = response.strip().strip("```json").strip("```").strip()
+            cleaned = self._extract_json(response)
             result = json.loads(cleaned)
             if result["category"] not in self.categories:
                 result["category"] = "other"
