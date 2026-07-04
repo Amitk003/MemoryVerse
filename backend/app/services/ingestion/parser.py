@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Tuple
 from uuid import uuid4
 
 from app.core.config import settings
@@ -19,7 +20,7 @@ class FileParser:
         self.upload_dir = Path(settings.UPLOAD_DIR)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_file(self, file_content: bytes, original_name: str) -> str:
+    def save_file(self, file_content: bytes, original_name: str) -> Tuple[str, str]:
         ext = Path(original_name).suffix.lower()
         safe_name = f"{uuid4().hex}{ext}"
         file_path = self.upload_dir / safe_name

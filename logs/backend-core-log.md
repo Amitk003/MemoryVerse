@@ -48,3 +48,8 @@
 5. chroma.py - Added empty results guard before accessing results["ids"][0]
 6. engine.py - Added description and extracted_text to relationship prompts for better context
 7. parser.py - save_file returns (path, safe_name) tuple instead of just path
+
+## Second Round of Review Fixes (3 issues)
+1. database.py - Added @event.listens_for(Engine, "connect") to execute PRAGMA foreign_keys=ON (SQLite needs this explicitly)
+2. parser.py - Fixed return type hint from -> str to -> Tuple[str, str]
+3. document.py - Added ORM relationship() mappings with cascade="all, delete-orphan" for both source and target sides
