@@ -1,13 +1,29 @@
 services:
-  app:
-    build: .
+  backend:
+    build:
+      context: .
+      target: backend
     ports:
-      - "80:80"
+      - "8000:8000"
     volumes:
-      - ./data/uploads:/app/backend/uploads
-      - ./data/chroma_data:/app/backend/chroma_data
+      - uploads:/app/backend/uploads
+      - chroma_data:/app/backend/chroma_data
       - ./data/memoryverse.db:/app/backend/memoryverse.db
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  chroma_data:
