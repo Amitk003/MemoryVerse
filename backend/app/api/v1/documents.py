@@ -15,6 +15,7 @@ from app.services.ingestion.parser import file_parser
 from app.services.categorization.classifier import classifier
 from app.services.vector_store.chroma import vector_store
 from app.services.relationships.engine import relationship_engine
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -216,3 +217,6 @@ def get_document_relationships(doc_id: int, db: Session = Depends(get_db)):
         (Relationship.target_document_id == doc_id)
     ).all()
     return [RelationshipResponse.model_validate(r) for r in relations]
+@router.get("/health")
+def health_check():
+    return {"status": "ok", "message": "MemoryVerse API is running"}
