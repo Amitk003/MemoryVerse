@@ -6,6 +6,8 @@ from typing import Optional
 from app.core.database import get_db, retry_on_lock
 from app.core.gemini import gemini_client
 from app.models.document import Document, CategoryEnum, Relationship
+from app.models.user import User
+from app.api.v1.auth import get_current_user
 from app.schemas.document import (
     DocumentResponse,
     DocumentUploadResponse,
@@ -90,6 +92,7 @@ def upload_document(
     file: UploadFile = File(...),
     bg_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -125,6 +128,7 @@ def upload_document(
             description=category_result.get("reason", ""),
             category=category_enum,
             is_indexed=False,
+            user_id=user.id,
         )
         db.add(doc)
         db.commit()
@@ -141,6 +145,7 @@ def upload_document(
                     "title": doc.title,
                     "category": doc.category.value if doc.category else "other",
                     "file_name": doc.file_name,
+                    "user_id": str(doc.user_id),
                 },
             )
             doc.is_indexed = True
@@ -168,8 +173,9 @@ def list_documents(
     page: int = 1,
     limit: int = 50,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    query = db.query(Document)
+    query = db.query(Document).filter(Document.user_id == user.id)
     if category:
         query = query.filter(Document.category == category)
     documents = query.order_by(Document.created_at.desc()).offset(
@@ -179,16 +185,16 @@ def list_documents(
 
 
 @router.get("/{doc_id}", response_model=DocumentResponse)
-def get_document(doc_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def get_document(doc_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    doc = db.query(Document).filter(Document.id == doc_id, Document.user_id == user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return DocumentResponse.model_validate(doc)
 
 
 @router.delete("/{doc_id}")
-def delete_document(doc_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def delete_document(doc_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    doc = db.query(Document).filter(Document.id == doc_id, Document.user_id == user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -206,8 +212,8 @@ def delete_document(doc_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{doc_id}/relationships", response_model=list[RelationshipResponse])
-def get_document_relationships(doc_id: int, db: Session = Depends(get_db)):
-    doc = db.query(Document).filter(Document.id == doc_id).first()
+def get_document_relationships(doc_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    doc = db.query(Document).filter(Document.id == doc_id, Document.user_id == user.id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 

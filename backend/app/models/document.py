@@ -32,7 +32,9 @@ class Document(Base):
     date_of_document = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    owner = relationship("User", back_populates="documents")
 
     source_relationships = relationship(
         "Relationship",
