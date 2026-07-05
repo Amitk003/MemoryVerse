@@ -3,7 +3,7 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Backgro
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.core.database import get_db
+from app.core.database import get_db, retry_on_lock
 from app.core.gemini import gemini_client
 from app.models.document import Document, CategoryEnum, Relationship
 from app.schemas.document import (
@@ -23,14 +23,37 @@ def _discover_relationships(doc_id: int):
     from app.core.database import SessionLocal
     db = SessionLocal()
     try:
-        all_docs = db.query(Document).all()
-        if len(all_docs) < 2:
+        new_doc = db.query(Document).filter(Document.id == doc_id).first()
+        if not new_doc:
             return
 
+        text_for_search = f"{new_doc.title} {new_doc.description or ''} {(new_doc.extracted_text or '')[:500]}"
+        try:
+            embedding = gemini_client.generate_embedding(text_for_search)
+            similar = vector_store.search(embedding, top_k=5)
+        except Exception:
+            return
+
+        candidate_ids = {int(r["id"]) for r in similar if int(r["id"]) != doc_id}
+        if not candidate_ids:
+            return
+
+        candidate_docs = db.query(Document).filter(Document.id.in_(candidate_ids)).all()
+        if not candidate_docs:
+            return
+
+        docs_to_evaluate = [new_doc] + candidate_docs
         docs_data = [
-            {"id": d.id, "title": d.title, "category": d.category.value if d.category else "other", "description": d.description or "", "extracted_text": d.extracted_text or ""}
-            for d in all_docs
+            {
+                "id": d.id,
+                "title": d.title,
+                "category": d.category.value if d.category else "other",
+                "description": d.description or "",
+                "extracted_text": d.extracted_text or "",
+            }
+            for d in docs_to_evaluate
         ]
+
         relations = relationship_engine.find_relationships(docs_data)
         for rel in relations:
             existing = db.query(Relationship).filter(
@@ -45,11 +68,16 @@ def _discover_relationships(doc_id: int):
                     relationship_type=rel.get("type"),
                     description=rel.get("description", ""),
                 ))
-        db.commit()
+        _commit_with_retry(db)
     except Exception:
         db.rollback()
     finally:
         db.close()
+
+
+@retry_on_lock()
+def _commit_with_retry(db):
+    db.commit()
 
 
 @router.get("/health")
@@ -96,6 +124,7 @@ def upload_document(
             extracted_text=extracted_text,
             description=category_result.get("reason", ""),
             category=category_enum,
+            is_indexed=False,
         )
         db.add(doc)
         db.commit()
@@ -114,8 +143,11 @@ def upload_document(
                     "file_name": doc.file_name,
                 },
             )
+            doc.is_indexed = True
+            db.commit()
         except Exception:
-            pass
+            doc.is_indexed = False
+            db.commit()
 
         bg_tasks.add_task(_discover_relationships, doc.id)
 

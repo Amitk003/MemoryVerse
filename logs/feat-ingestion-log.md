@@ -38,3 +38,8 @@
 - Ghost search after delete: OK (no ghost results)
 - Unsupported file type rejected: 400 - OK
 - Non-existent doc: 404 - OK
+
+## Second Round of Review Fixes (3 issues)
+1. Relationship discovery: O(N^2) -> O(K) by using vector search to find top-5 similar docs instead of querying all documents. Reduced token usage and rate limit risk.
+2. Silent index failure: Added is_indexed Boolean column to Document model. If embedding fails, is_indexed=False and document remains visible but not searchable.
+3. SQLite concurrent write lock: Enabled WAL mode (PRAGMA journal_mode=WAL) for better concurrent access. Added retry_on_lock() decorator with exponential backoff for background task DB writes.
