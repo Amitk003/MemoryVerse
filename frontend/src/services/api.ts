@@ -2,9 +2,6 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 api.interceptors.request.use((config) => {
@@ -44,7 +41,8 @@ export const documentsApi = {
 
   upload: (formData: FormData) =>
     api.post('/documents/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
+      transformRequest: [(data) => data],
     }),
 
   list: (params?: { category?: string; page?: number; limit?: number }) =>
@@ -60,6 +58,8 @@ export const documentsApi = {
 
   relationships: (docId: number) =>
     api.get(`/documents/${docId}/relationships`),
+
+  allRelationships: () => api.get('/documents/relationships'),
 }
 
 export default api

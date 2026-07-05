@@ -23,22 +23,13 @@ export default function RelationshipGraph() {
   const [docs, setDocs] = useState<Document[]>([])
   const [allRels, setAllRels] = useState<Relationship[]>([])
   const [hoveredId, setHoveredId] = useState<number | null>(null)
-  const animRef = useRef<number>(0)
 
   useEffect(() => {
     documentsApi.list({ limit: 100 }).then((res) => {
-      const allDocs = (res.data ?? []) as Document[]
-      setDocs(allDocs)
-
-      Promise.all(allDocs.map((d) =>
-        documentsApi.relationships(d.id).catch(() => ({ data: [] as Relationship[] }))
-      )).then((relArrs) => {
-        const flat = relArrs.flatMap((r) => (r.data ?? []) as Relationship[])
-        const unique = flat.filter((r, i, a) => a.findIndex(
-          (x) => x.source_document_id === r.source_document_id && x.target_document_id === r.target_document_id
-        ) === i)
-        setAllRels(unique)
-      })
+      setDocs((res.data ?? []) as Document[])
+    })
+    documentsApi.allRelationships().then((res) => {
+      setAllRels((res.data ?? []) as Relationship[])
     })
   }, [])
 
@@ -75,54 +66,47 @@ export default function RelationshipGraph() {
     canvas.height = rect.height * dpr
     ctx.scale(dpr, dpr)
 
-    const draw = () => {
-      ctx.clearRect(0, 0, rect.width, rect.height)
+    ctx.clearRect(0, 0, rect.width, rect.height)
 
-      edges.forEach((edge) => {
-        const src = nodes.find((n) => n.id === edge.source)
-        const tgt = nodes.find((n) => n.id === edge.target)
-        if (!src || !tgt) return
+    edges.forEach((edge) => {
+      const src = nodes.find((n) => n.id === edge.source)
+      const tgt = nodes.find((n) => n.id === edge.target)
+      if (!src || !tgt) return
 
-        const isHovered = hoveredId === edge.source || hoveredId === edge.target
-        ctx.beginPath()
-        ctx.moveTo(src.x, src.y)
-        ctx.lineTo(tgt.x, tgt.y)
-        ctx.strokeStyle = isHovered ? '#3b82f6' : '#e5e7eb'
-        ctx.lineWidth = isHovered ? 2 : 1
-        ctx.stroke()
+      const isHovered = hoveredId === edge.source || hoveredId === edge.target
+      ctx.beginPath()
+      ctx.moveTo(src.x, src.y)
+      ctx.lineTo(tgt.x, tgt.y)
+      ctx.strokeStyle = isHovered ? '#3b82f6' : '#e5e7eb'
+      ctx.lineWidth = isHovered ? 2 : 1
+      ctx.stroke()
 
-        const mx = (src.x + tgt.x) / 2
-        const my = (src.y + tgt.y) / 2 - 6
-        if (isHovered) {
-          ctx.fillStyle = '#6b7280'
-          ctx.font = '10px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(edge.type, mx, my)
-        }
-      })
+      const mx = (src.x + tgt.x) / 2
+      const my = (src.y + tgt.y) / 2 - 6
+      if (isHovered) {
+        ctx.fillStyle = '#6b7280'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(edge.type, mx, my)
+      }
+    })
 
-      nodes.forEach((node) => {
-        const isHovered = hoveredId === node.id
-        const radius = isHovered ? 8 : 6
+    nodes.forEach((node) => {
+      const isHovered = hoveredId === node.id
+      const radius = isHovered ? 8 : 6
 
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
-        ctx.fillStyle = isHovered ? '#3b82f6' : '#9ca3af'
-        ctx.fill()
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
+      ctx.fillStyle = isHovered ? '#3b82f6' : '#9ca3af'
+      ctx.fill()
 
-        if (isHovered) {
-          ctx.fillStyle = '#1f2937'
-          ctx.font = '12px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(node.label, node.x, node.y - 14)
-        }
-      })
-
-      animRef.current = requestAnimationFrame(draw)
-    }
-
-    draw()
-    return () => cancelAnimationFrame(animRef.current)
+      if (isHovered) {
+        ctx.fillStyle = '#1f2937'
+        ctx.font = '12px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(node.label, node.x, node.y - 14)
+      }
+    })
   }, [nodes, edges, hoveredId])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {

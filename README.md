@@ -24,8 +24,13 @@ MemoryVerse transforms scattered documents into a structured, searchable knowled
 
 ## Quick Start
 
-See `docs/setup.md` for detailed setup instructions.
+### Docker (recommended)
+```
+docker compose up --build
+```
+Frontend: `http://localhost:80`  |  Backend API: `http://localhost:8000/api/v1/`
 
+### Local dev
 ```
 cd backend
 python -m venv venv
@@ -33,6 +38,14 @@ venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+Then in another terminal:
+```
+cd frontend
+npm install
+npm run dev
+```
+
+See `docs/setup.md` for detailed setup instructions.
 
 ## Project Structure
 

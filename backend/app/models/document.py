@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SAEnum, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 import enum
@@ -30,8 +30,8 @@ class Document(Base):
     extracted_text = Column(Text, default="")
     is_indexed = Column(Boolean, default=False)
     date_of_document = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     owner = relationship("User", back_populates="documents")
@@ -58,7 +58,7 @@ class Relationship(Base):
     target_document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     relationship_type = Column(String(100), nullable=False)
     description = Column(Text, default="")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     source_document = relationship("Document", foreign_keys=[source_document_id], back_populates="source_relationships")
     target_document = relationship("Document", foreign_keys=[target_document_id], back_populates="target_relationships")

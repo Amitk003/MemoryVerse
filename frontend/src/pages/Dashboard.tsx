@@ -14,7 +14,9 @@ export default function Dashboard() {
     setLoading(true)
     documentsApi.list().then((res) => {
       setDocuments(res.data ?? [])
-    }).catch(() => { }).finally(() => setLoading(false))
+    }).catch((err) => {
+      console.error('Failed to fetch documents:', err)
+    }).finally(() => setLoading(false))
   }
 
   useEffect(fetchDocuments, [])
@@ -25,7 +27,9 @@ export default function Dashboard() {
     try {
       await documentsApi.delete(docId)
       setDocuments((prev) => prev.filter((d) => d.id !== docId))
-    } catch { }
+    } catch (err) {
+      console.error('Failed to delete document:', err)
+    }
   }
 
   const categoryCounts = CATEGORIES.map((cat) => ({

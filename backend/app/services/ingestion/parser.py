@@ -1,9 +1,12 @@
+import logging
 import os
 from pathlib import Path
 from typing import Tuple
 from uuid import uuid4
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class FileParser:
@@ -55,7 +58,8 @@ class FileParser:
             image = Image.open(file_path)
             text = pytesseract.image_to_string(image)
             return text
-        except Exception:
+        except Exception as e:
+            logger.warning("Image text extraction failed for %s: %s", file_path, e)
             return ""
 
     def _extract_txt_text(self, file_path: str) -> str:
