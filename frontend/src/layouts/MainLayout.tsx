@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Upload, Search, LayoutDashboard, Timeline, Menu, X, LogOut } from 'lucide-react'
+import { Upload, Search, LayoutDashboard, Timeline, Share2, User, Menu, X, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 
@@ -8,6 +8,8 @@ const navItems = [
   { to: '/upload', label: 'Upload', icon: Upload },
   { to: '/search', label: 'Search', icon: Search },
   { to: '/timeline', label: 'Timeline', icon: Timeline },
+  { to: '/relationships', label: 'Relationships', icon: Share2 },
+  { to: '/profile', label: 'Profile', icon: User },
 ]
 
 export default function MainLayout() {

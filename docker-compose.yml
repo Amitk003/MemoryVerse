@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - ./data/uploads:/app/backend/uploads
+      - ./data/chroma_data:/app/backend/chroma_data
+      - ./data/memoryverse.db:/app/backend/memoryverse.db
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+    restart: unless-stopped
