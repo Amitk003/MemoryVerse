@@ -8,7 +8,7 @@ services:
     volumes:
       - uploads:/app/backend/uploads
       - chroma_data:/app/backend/chroma_data
-      - ./data/memoryverse.db:/app/backend/memoryverse.db
+      - data_db:/app/backend/data
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
@@ -27,3 +27,4 @@ services:
 volumes:
   uploads:
   chroma_data:
+  data_db:
