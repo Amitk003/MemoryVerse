@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import auth, documents, search
-from app.api.v1 import documents, search
-from app.api.v1 import documents
 from app.core.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
