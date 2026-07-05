@@ -1,6 +1,7 @@
-import { Outlet, NavLink } from 'react-router-dom'
-import { Upload, Search, LayoutDashboard, Timeline, Menu, X } from 'lucide-react'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Upload, Search, LayoutDashboard, Timeline, Menu, X, LogOut } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '../auth/AuthContext'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,6 +12,13 @@ const navItems = [
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -48,6 +56,20 @@ export default function MainLayout() {
             </NavLink>
           ))}
         </nav>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600 truncate">
+              {user?.username}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
       </aside>
 
       {sidebarOpen && (
@@ -58,11 +80,16 @@ export default function MainLayout() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center h-16 px-6 bg-white border-b lg:hidden">
-          <button onClick={() => setSidebarOpen(true)}>
-            <Menu size={20} />
+        <header className="flex items-center justify-between h-16 px-6 bg-white border-b lg:hidden">
+          <div className="flex items-center">
+            <button onClick={() => setSidebarOpen(true)}>
+              <Menu size={20} />
+            </button>
+            <h1 className="ml-4 text-lg font-semibold">MemoryVerse</h1>
+          </div>
+          <button onClick={handleLogout} className="text-gray-400 hover:text-red-600">
+            <LogOut size={18} />
           </button>
-          <h1 className="ml-4 text-lg font-semibold">MemoryVerse</h1>
         </header>
 
         <main className="flex-1 overflow-auto p-6">

@@ -21,6 +21,7 @@ class GeminiClient:
         return response.text
 
     def generate_embedding(self, text: str) -> list[float]:
+        self._ensure_initialized()
         result = genai.embed_content(
             model=self.embedding_model,
             content=text,

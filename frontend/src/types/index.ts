@@ -54,6 +54,19 @@ export const CATEGORIES: { value: CategoryType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
+export interface User {
+  id: number
+  email: string
+  username: string
+  created_at: string
+}
+
+export interface LoginResponse {
+  access_token: string
+  token_type: string
+  user: User
+}
+
 export const CATEGORY_COLORS: Record<CategoryType, string> = {
   project: 'bg-blue-100 text-blue-800',
   skill: 'bg-green-100 text-green-800',
