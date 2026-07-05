@@ -1,14 +1,55 @@
 import os
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
-from app.models.document import Document, CategoryEnum
-from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.core.gemini import gemini_client
+from app.models.document import Document, CategoryEnum, Relationship
+from app.schemas.document import (
+    DocumentResponse,
+    DocumentUploadResponse,
+    RelationshipResponse,
+)
 from app.services.ingestion.parser import file_parser
+from app.services.categorization.classifier import classifier
+from app.services.vector_store.chroma import vector_store
+from app.services.relationships.engine import relationship_engine
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+def _discover_relationships(doc_id: int):
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        all_docs = db.query(Document).all()
+        if len(all_docs) < 2:
+            return
+
+        docs_data = [
+            {"id": d.id, "title": d.title, "category": d.category.value if d.category else "other", "description": d.description or "", "extracted_text": d.extracted_text or ""}
+            for d in all_docs
+        ]
+        relations = relationship_engine.find_relationships(docs_data)
+        for rel in relations:
+            existing = db.query(Relationship).filter(
+                Relationship.source_document_id == rel.get("source_id"),
+                Relationship.target_document_id == rel.get("target_id"),
+                Relationship.relationship_type == rel.get("type"),
+            ).first()
+            if not existing:
+                db.add(Relationship(
+                    source_document_id=rel.get("source_id"),
+                    target_document_id=rel.get("target_id"),
+                    relationship_type=rel.get("type"),
+                    description=rel.get("description", ""),
+                ))
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
 
 
 @router.get("/health")
@@ -19,6 +60,7 @@ def health_check():
 @router.post("/upload", response_model=DocumentUploadResponse)
 def upload_document(
     file: UploadFile = File(...),
+    bg_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
 ):
     if not file.filename:
@@ -34,25 +76,58 @@ def upload_document(
     content = file.file.read()
     file_path, safe_name = file_parser.save_file(content, file.filename)
 
-    extracted_text = file_parser.extract_text(file_path, file.content_type or "")
+    try:
+        extracted_text = file_parser.extract_text(file_path, file.content_type or "")
 
-    doc = Document(
-        title=file.filename,
-        file_name=safe_name,
-        file_path=file_path,
-        file_type=file.content_type or file_parser.get_file_type(file.filename),
-        file_size=len(content),
-        extracted_text=extracted_text,
-        category=CategoryEnum.OTHER,
-    )
-    db.add(doc)
-    db.commit()
-    db.refresh(doc)
+        category_result = classifier.classify(file.filename, extracted_text)
+        category_value = category_result.get("category", "other")
 
-    return DocumentUploadResponse(
-        message="Document uploaded successfully",
-        document=DocumentResponse.model_validate(doc),
-    )
+        try:
+            category_enum = CategoryEnum(category_value)
+        except ValueError:
+            category_enum = CategoryEnum.OTHER
+
+        doc = Document(
+            title=file.filename,
+            file_name=safe_name,
+            file_path=file_path,
+            file_type=file.content_type or file_parser.get_file_type(file.filename),
+            file_size=len(content),
+            extracted_text=extracted_text,
+            description=category_result.get("reason", ""),
+            category=category_enum,
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+
+        try:
+            text_for_embedding = f"{doc.title} {doc.description} {extracted_text[:2000]}"
+            embedding = gemini_client.generate_embedding(text_for_embedding)
+            vector_store.add_document(
+                doc_id=str(doc.id),
+                embedding=embedding,
+                text=text_for_embedding[:2000],
+                metadata={
+                    "title": doc.title,
+                    "category": doc.category.value if doc.category else "other",
+                    "file_name": doc.file_name,
+                },
+            )
+        except Exception:
+            pass
+
+        bg_tasks.add_task(_discover_relationships, doc.id)
+
+        return DocumentUploadResponse(
+            message="Document uploaded and classified successfully",
+            document=DocumentResponse.model_validate(doc),
+        )
+
+    except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @router.get("/", response_model=list[DocumentResponse])
@@ -88,6 +163,24 @@ def delete_document(doc_id: int, db: Session = Depends(get_db)):
     if os.path.exists(doc.file_path):
         os.remove(doc.file_path)
 
+    try:
+        vector_store.delete_document(str(doc_id))
+    except Exception:
+        pass
+
     db.delete(doc)
     db.commit()
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/{doc_id}/relationships", response_model=list[RelationshipResponse])
+def get_document_relationships(doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    relations = db.query(Relationship).filter(
+        (Relationship.source_document_id == doc_id) |
+        (Relationship.target_document_id == doc_id)
+    ).all()
+    return [RelationshipResponse.model_validate(r) for r in relations]
