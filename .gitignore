@@ -36,3 +36,12 @@ Thumbs.db
 # Uploads
 uploads/
 chroma_data/
+
+# Database
+*.db
+*.db-journal
+
+# Runtime files
+uvicorn_*.txt
+*.out
+*.err
