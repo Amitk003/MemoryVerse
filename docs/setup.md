@@ -63,6 +63,20 @@
 
    The app will be available at `http://localhost:5173`
 
+## Docker Setup
+
+1. Make sure you have Docker and Docker Compose installed
+2. Create `backend/.env` with your Gemini API key:
+   ```
+   GEMINI_API_KEY=your_actual_key_here
+   ```
+3. Build and start:
+   ```
+   docker compose up --build
+   ```
+   Frontend: `http://localhost:80`
+   Backend API: `http://localhost:8000/api/v1/`
+
 ## Getting a Gemini API Key
 
 1. Go to https://aistudio.google.com/apikey

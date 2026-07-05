@@ -1,3 +1,5 @@
+import logging
+
 import chromadb
 from chromadb.config import Settings
 
@@ -5,18 +7,36 @@ from typing import Optional
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class VectorStore:
     def __init__(self):
-        self.client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIR,
-            settings=Settings(anonymized_telemetry=False),
-        )
+        self._initialized = False
+        self._client = None
+        self._collection = None
         self.collection_name = "memoryverse_documents"
-        self.collection = self.client.get_or_create_collection(
-            name=self.collection_name,
-            metadata={"hnsw:space": "cosine"},
-        )
+
+    def _ensure_initialized(self):
+        if not self._initialized:
+            try:
+                self._client = chromadb.PersistentClient(
+                    path=settings.CHROMA_PERSIST_DIR,
+                    settings=Settings(anonymized_telemetry=False),
+                )
+                self._collection = self._client.get_or_create_collection(
+                    name=self.collection_name,
+                    metadata={"hnsw:space": "cosine"},
+                )
+                self._initialized = True
+            except Exception as e:
+                logger.error("ChromaDB initialization failed: %s", e)
+                raise
+
+    @property
+    def collection(self):
+        self._ensure_initialized()
+        return self._collection
 
     def add_document(
         self,
@@ -32,13 +52,13 @@ class VectorStore:
             metadatas=[metadata],
         )
 
-    def search(self, query_embedding: list[float], top_k: int = 10, filter: Optional[dict] = None) -> list[dict]:
+    def search(self, query_embedding: list[float], top_k: int = 10, where_filter: Optional[dict] = None) -> list[dict]:
         kwargs = {
             "query_embeddings": [query_embedding],
             "n_results": top_k,
         }
-        if filter:
-            kwargs["where"] = filter
+        if where_filter:
+            kwargs["where"] = where_filter
         results = self.collection.query(**kwargs)
         if not results or not results.get("ids") or not results["ids"]:
             return []

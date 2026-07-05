@@ -40,3 +40,7 @@ The system connects related documents. For example:
 - A Python certification connects to the "Skill" category
 - A skill connects to projects that use that skill
 - A project connects to an internship where you worked on similar things
+
+## Diagnostics
+
+Visit `GET /api/v1/test-gemini` to verify the Gemini API connection. Returns the status of initialization, text generation, and embedding.

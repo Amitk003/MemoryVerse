@@ -1,7 +1,10 @@
+import logging
 import re
 import json
 
 from app.core.gemini import gemini_client
+
+logger = logging.getLogger(__name__)
 
 
 CATEGORIES = [
@@ -45,7 +48,8 @@ Document Content: {text[:2000]}
             if result["category"] not in self.categories:
                 result["category"] = "other"
             return result
-        except Exception:
+        except Exception as e:
+            logger.error("Classification failed for '%s': %s", title, e)
             return {"category": "other", "reason": "Classification failed, defaulted to other"}
 
 

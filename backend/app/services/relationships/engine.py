@@ -1,7 +1,10 @@
+import logging
 import re
 import json
 
 from app.core.gemini import gemini_client
+
+logger = logging.getLogger(__name__)
 
 
 class RelationshipEngine:
@@ -52,7 +55,8 @@ Documents:
             response = gemini_client.generate_text(prompt)
             cleaned = self._extract_json(response)
             return json.loads(cleaned)
-        except Exception:
+        except Exception as e:
+            logger.error("Relationship discovery failed: %s", e)
             return []
 
 

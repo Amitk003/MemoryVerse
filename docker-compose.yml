@@ -9,9 +9,10 @@ services:
       - uploads:/app/backend/uploads
       - chroma_data:/app/backend/chroma_data
       - data_db:/app/backend/data
+    env_file:
+      - ./backend/.env
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - SECRET_KEY=${SECRET_KEY:-default-secret-key-change-in-production}
     restart: unless-stopped
 
   frontend:

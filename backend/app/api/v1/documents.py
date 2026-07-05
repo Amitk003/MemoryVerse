@@ -1,9 +1,12 @@
+import logging
 import os
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db, retry_on_lock
+
+logger = logging.getLogger(__name__)
 from app.core.gemini import gemini_client
 from app.models.document import Document, CategoryEnum, Relationship
 from app.models.user import User
@@ -22,8 +25,9 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 def _discover_relationships(doc_id: int):
     from app.core.database import SessionLocal
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         new_doc = db.query(Document).filter(Document.id == doc_id).first()
         if not new_doc:
             return
@@ -31,8 +35,9 @@ def _discover_relationships(doc_id: int):
         text_for_search = f"{new_doc.title} {new_doc.description or ''} {(new_doc.extracted_text or '')[:500]}"
         try:
             embedding = gemini_client.generate_embedding(text_for_search)
-            similar = vector_store.search(embedding, top_k=5, filter={"user_id": str(new_doc.user_id)})
-        except Exception:
+            similar = vector_store.search(embedding, top_k=5, where_filter={"user_id": str(new_doc.user_id)})
+        except Exception as e:
+            logger.warning("Relationship discovery failed for doc %d: %s", doc_id, e)
             return
 
         candidate_ids = {int(r["id"]) for r in similar if int(r["id"]) != doc_id}
@@ -73,10 +78,13 @@ def _discover_relationships(doc_id: int):
                     description=rel.get("description", ""),
                 ))
         _commit_with_retry(db)
-    except Exception:
-        db.rollback()
+    except Exception as e:
+        logger.warning("Relationship discovery transaction failed for doc %d: %s", doc_id, e)
+        if db:
+            db.rollback()
     finally:
-        db.close()
+        if db:
+            db.close()
 
 
 @retry_on_lock()
@@ -107,6 +115,8 @@ def upload_document(
         )
 
     content = file.file.read()
+    file_path = None
+    safe_name = None
     file_path, safe_name = file_parser.save_file(content, file.filename)
 
     try:
@@ -137,7 +147,7 @@ def upload_document(
         db.refresh(doc)
 
         try:
-            text_for_embedding = f"{doc.title} {doc.description} {extracted_text[:2000]}"
+            text_for_embedding = f"[{doc.category.value}] {doc.title} {doc.description} {extracted_text[:2000]}"
             embedding = gemini_client.generate_embedding(text_for_embedding)
             vector_store.add_document(
                 doc_id=str(doc.id),
@@ -152,7 +162,8 @@ def upload_document(
             )
             doc.is_indexed = True
             db.commit()
-        except Exception:
+        except Exception as e:
+            logger.error("Failed to index document %d in vector store: %s", doc.id, e)
             doc.is_indexed = False
             db.commit()
 
@@ -164,26 +175,44 @@ def upload_document(
         )
 
     except Exception as e:
-        if os.path.exists(file_path):
+        if file_path and os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@router.get("/", response_model=list[DocumentResponse])
+@router.get("", response_model=list[DocumentResponse])
 def list_documents(
     category: Optional[str] = None,
-    page: int = 1,
-    limit: int = 50,
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     query = db.query(Document).filter(Document.user_id == user.id)
     if category:
-        query = query.filter(Document.category == category)
+        try:
+            category_enum = CategoryEnum(category)
+            query = query.filter(Document.category == category_enum)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
     documents = query.order_by(Document.created_at.desc()).offset(
         (page - 1) * limit
     ).limit(limit).all()
     return [DocumentResponse.model_validate(d) for d in documents]
+
+
+@router.get("/relationships", response_model=list[RelationshipResponse])
+def get_all_relationships(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select
+    doc_ids = select(Document.id).where(Document.user_id == user.id)
+    relations = db.query(Relationship).filter(
+        (Relationship.source_document_id.in_(doc_ids)) |
+        (Relationship.target_document_id.in_(doc_ids))
+    ).all()
+    return [RelationshipResponse.model_validate(r) for r in relations]
 
 
 @router.get("/{doc_id}", response_model=DocumentResponse)
@@ -205,8 +234,8 @@ def delete_document(doc_id: int, db: Session = Depends(get_db), user: User = Dep
 
     try:
         vector_store.delete_document(str(doc_id))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to delete doc %d from vector store: %s", doc_id, e)
 
     db.delete(doc)
     db.commit()

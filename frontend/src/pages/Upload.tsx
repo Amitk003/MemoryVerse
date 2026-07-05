@@ -71,32 +71,32 @@ export default function Upload() {
       )
     )
 
-    const uploads = toUpload.map(async (fs) => {
+    const uploads = toUpload.map(async (fs, index) => {
       try {
         const formData = new FormData()
         formData.append('file', fs.file)
         await documentsApi.upload(formData)
-        return { name: fs.file.name, success: true }
+        return { index, success: true }
       } catch {
-        return { name: fs.file.name, success: false }
+        return { index, success: false }
       }
     })
 
     const settled = await Promise.allSettled(uploads)
 
     setFileStatuses((prev) => {
-      const results = new Map<string, boolean>()
-      settled.forEach((r, i) => {
+      const results = new Map<number, boolean>()
+      settled.forEach((r) => {
         if (r.status === 'fulfilled') {
-          results.set(toUpload[i].file.name, r.value.success)
-        } else {
-          results.set(toUpload[i].file.name, false)
+          results.set(r.value.index, r.value.success)
         }
       })
 
-      return prev.map((fs) => {
+      const uploadingIdxs = new Set(prev.map((fs, i) => fs.status === 'uploading' && !fs.error ? i : -1).filter(i => i >= 0))
+
+      return prev.map((fs, i) => {
         if (fs.status === 'uploading') {
-          const ok = results.get(fs.file.name)
+          const ok = uploadingIdxs.has(i) ? results.get(i) : undefined
           return {
             ...fs,
             status: ok ? 'success' as const : 'error' as const,
