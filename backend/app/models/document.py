@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SAEnum, ForeignKey, Boolean
 from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SAEnum, ForeignKey
 from sqlalchemy.orm import relationship
 import enum
@@ -28,6 +29,7 @@ class Document(Base):
     category = Column(SAEnum(CategoryEnum), default=CategoryEnum.OTHER)
     description = Column(Text, default="")
     extracted_text = Column(Text, default="")
+    is_indexed = Column(Boolean, default=False)
     date_of_document = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

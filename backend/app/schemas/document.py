@@ -20,6 +20,7 @@ class DocumentResponse(DocumentBase):
     file_type: str
     file_size: int
     extracted_text: Optional[str] = ""
+    is_indexed: bool = False
     created_at: datetime
     updated_at: datetime
 
