@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class UserRegister(BaseModel):
-    email: str
+    email: EmailStr
     username: str
     password: str
 

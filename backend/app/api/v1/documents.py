@@ -31,7 +31,7 @@ def _discover_relationships(doc_id: int):
         text_for_search = f"{new_doc.title} {new_doc.description or ''} {(new_doc.extracted_text or '')[:500]}"
         try:
             embedding = gemini_client.generate_embedding(text_for_search)
-            similar = vector_store.search(embedding, top_k=5)
+            similar = vector_store.search(embedding, top_k=5, filter={"user_id": str(new_doc.user_id)})
         except Exception:
             return
 
@@ -39,7 +39,10 @@ def _discover_relationships(doc_id: int):
         if not candidate_ids:
             return
 
-        candidate_docs = db.query(Document).filter(Document.id.in_(candidate_ids)).all()
+        candidate_docs = db.query(Document).filter(
+            Document.id.in_(candidate_ids),
+            Document.user_id == new_doc.user_id,
+        ).all()
         if not candidate_docs:
             return
 
