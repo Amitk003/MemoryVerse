@@ -11,7 +11,7 @@ class GeminiClient:
 
     def _ensure_initialized(self):
         if not self._initialized:
-            self._client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            self._client = genai.Client(api_key=settings.GEMINI_API_KEY or None)
             self._initialized = True
 
     def generate_text(self, prompt: str) -> str:

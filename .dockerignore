@@ -1,0 +1,11 @@
+.git
+node_modules
+venv
+__pycache__
+*.pyc
+.env
+chroma_data
+uploads
+data
+memoryverse.db
+dist
