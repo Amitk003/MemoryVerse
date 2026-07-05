@@ -8,6 +8,7 @@ export interface Document {
   description: string
   extracted_text: string
   date_of_document: string | null
+  is_indexed: boolean
   created_at: string
   updated_at: string
 }

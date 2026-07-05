@@ -2,18 +2,31 @@ import { useEffect, useState } from 'react'
 import { documentsApi } from '../services/api'
 import type { Document } from '../types'
 import { CATEGORIES, CATEGORY_COLORS } from '../types'
-import { FileText, FolderOpen } from 'lucide-react'
+import { FileText, FolderOpen, Trash2 } from 'lucide-react'
+import DocumentModal from '../components/DocumentModal'
 
 export default function Dashboard() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
+  const [modalDocId, setModalDocId] = useState<number | null>(null)
 
-  useEffect(() => {
+  const fetchDocuments = () => {
+    setLoading(true)
     documentsApi.list().then((res) => {
       setDocuments(res.data ?? [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+    }).catch(() => { }).finally(() => setLoading(false))
+  }
+
+  useEffect(fetchDocuments, [])
+
+  const handleDelete = async (e: React.MouseEvent, docId: number) => {
+    e.stopPropagation()
+    if (!confirm('Delete this document?')) return
+    try {
+      await documentsApi.delete(docId)
+      setDocuments((prev) => prev.filter((d) => d.id !== docId))
+    } catch { }
+  }
 
   const categoryCounts = CATEGORIES.map((cat) => ({
     ...cat,
@@ -66,22 +79,38 @@ export default function Dashboard() {
             {documents.slice(0, 10).map((doc) => (
               <div
                 key={doc.id}
-                className="px-6 py-3 flex items-center justify-between"
+                onClick={() => setModalDocId(doc.id)}
+                className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <FileText size={16} className="text-gray-400" />
-                  <span className="text-sm text-gray-700">{doc.title}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText size={16} className="text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700 truncate">{doc.title}</span>
                 </div>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[doc.category as keyof typeof CATEGORY_COLORS]}`}
-                >
-                  {doc.category}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[doc.category as keyof typeof CATEGORY_COLORS]}`}
+                  >
+                    {doc.category}
+                  </span>
+                  <button
+                    onClick={(e) => handleDelete(e, doc.id)}
+                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <DocumentModal
+        docId={modalDocId}
+        onClose={() => setModalDocId(null)}
+        onDeleted={(id) => setDocuments((prev) => prev.filter((d) => d.id !== id))}
+      />
     </div>
   )
 }

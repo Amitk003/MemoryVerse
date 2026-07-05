@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import Search from './pages/Search'
 import Timeline from './pages/Timeline'
+import Relationships from './pages/Relationships'
+import Profile from './pages/Profile'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import type { ReactNode } from 'react'
@@ -33,6 +35,8 @@ function AppRoutes() {
         <Route path="/upload" element={<Upload />} />
         <Route path="/search" element={<Search />} />
         <Route path="/timeline" element={<Timeline />} />
+        <Route path="/relationships" element={<Relationships />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
     </Routes>
   )
