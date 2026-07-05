@@ -1,9 +1,14 @@
+import os
 import time
+from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
+
+DB_PATH = Path(settings.DATABASE_URL.replace("sqlite:///", "")).parent
+DB_PATH.mkdir(parents=True, exist_ok=True)
 
 engine = create_engine(
     settings.DATABASE_URL,
