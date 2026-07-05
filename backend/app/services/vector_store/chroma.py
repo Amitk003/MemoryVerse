@@ -1,6 +1,8 @@
 import chromadb
 from chromadb.config import Settings
 
+from typing import Optional
+
 from app.core.config import settings
 
 
@@ -30,11 +32,14 @@ class VectorStore:
             metadatas=[metadata],
         )
 
-    def search(self, query_embedding: list[float], top_k: int = 10) -> list[dict]:
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-        )
+    def search(self, query_embedding: list[float], top_k: int = 10, filter: Optional[dict] = None) -> list[dict]:
+        kwargs = {
+            "query_embeddings": [query_embedding],
+            "n_results": top_k,
+        }
+        if filter:
+            kwargs["where"] = filter
+        results = self.collection.query(**kwargs)
         if not results or not results.get("ids") or not results["ids"]:
             return []
 

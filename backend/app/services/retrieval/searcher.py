@@ -1,13 +1,15 @@
 from typing import Optional
 
+from pydantic import BaseModel
+
 from app.core.gemini import gemini_client
 from app.services.vector_store.chroma import vector_store
 
 
 class Searcher:
-    def semantic_search(self, query: str, top_k: int = 10) -> list[dict]:
+    def semantic_search(self, query: str, top_k: int = 10, filter: Optional[dict] = None) -> list[dict]:
         query_embedding = gemini_client.generate_embedding(query)
-        results = vector_store.search(query_embedding, top_k)
+        results = vector_store.search(query_embedding, top_k, filter=filter)
         return results
 
     def natural_query(self, query: str, documents_context: str) -> str:
